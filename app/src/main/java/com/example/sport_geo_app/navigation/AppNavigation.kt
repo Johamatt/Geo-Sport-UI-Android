@@ -4,11 +4,11 @@ class AppNavigation {
     enum class Screen {
         SPLASH,
         LOGIN,
-        HOME
+        MAP
     }
     sealed class NavigationItem(val route: String) {
         object Splash : NavigationItem(Screen.SPLASH.name)
         object Login : NavigationItem(Screen.LOGIN.name)
-        object Home : NavigationItem(Screen.HOME.name)
+        object Map : NavigationItem(Screen.MAP.name)
     }
 }
