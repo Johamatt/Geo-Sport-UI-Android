@@ -22,6 +22,10 @@ import com.mapbox.maps.extension.compose.animation.viewport.MapViewportState
 import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotation
 import androidx.compose.runtime.remember
 import com.example.sport_geo_app.data.model.Place
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import kotlin.math.log
 
 @OptIn(MapboxExperimental::class)
 @Composable
@@ -30,7 +34,7 @@ fun MapScreen() {
         MapViewportState().apply {
             setCameraOptions {
                 zoom(10.0)
-                center(Point.fromLngLat(24.9, 60.1))
+                center(Point.fromLngLat(60.241499034 , 24.857163238))
                 pitch(0.0)
                 bearing(0.0)
             }
@@ -65,13 +69,20 @@ fun fetchPlacesAndAddMarkers(
     val context = LocalContext.current
 
     LaunchedEffect(mapViewportState) {
-        val fetchedPlaces = PlaceRepository.fetchNearbyPlaces(
-            latitude = mapViewportState.cameraState.center.latitude(),
-            longitude = mapViewportState.cameraState.center.longitude(),
-            radius = 500
-        )
+        val fetchedPlaces = coroutineScope {
+            withContext(Dispatchers.IO) {
+                PlaceRepository.fetchNearbyPlaces(
+                    latitude = mapViewportState.cameraState.center.latitude(),
+                    longitude = mapViewportState.cameraState.center.longitude(),
+                    radius = 500
+                )
+            }
+        }
+
         placesState.value = fetchedPlaces
     }
+
+    println("Places State Changed: ${placesState}")
 
     val places = placesState.value
 
@@ -86,6 +97,7 @@ fun fetchPlacesAndAddMarkers(
             drawable.intrinsicHeight,
             Bitmap.Config.ARGB_8888
         )
+
 
         val annotationPoint = Point.fromLngLat(place.longitude, place.latitude)
         PointAnnotation(
