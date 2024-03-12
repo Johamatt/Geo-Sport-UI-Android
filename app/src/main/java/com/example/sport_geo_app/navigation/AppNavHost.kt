@@ -27,7 +27,7 @@ fun AppNavHost(
             LoginScreen(navController)
         }
         composable(AppNavigation.NavigationItem.Map.route) {
-            MapScreen(navController)
+            MapScreen()
         }
     }
 }

@@ -4,6 +4,13 @@ plugins {
 }
 
 android {
+    buildFeatures {
+        compose = true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.3.2"
+    }
     namespace = "com.example.sport_geo_app"
     compileSdk = 34
 
@@ -55,6 +62,8 @@ dependencies {
     implementation("com.mapbox.maps:android:11.2.0")
     // If you're using compose also add the compose extension
     implementation("com.mapbox.extension:maps-compose:11.2.0")
+    implementation ("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
