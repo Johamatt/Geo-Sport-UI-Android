@@ -4,8 +4,6 @@ import com.google.gson.annotations.SerializedName
 data class Place(
     val id: Int,
     val name: String,
-    val latitude: Double,
-    val longitude: Double,
     val type: String,
     @SerializedName("street_address")
     val streetAddress: String,
@@ -18,6 +16,20 @@ data class Place(
     @SerializedName("mainType")
     val mainType: String,
     val district: String,
-    val createdAt: String,
-    val updatedAt: String
+    val geom: Geom
+)
+
+data class Geom(
+    val coordinates: List<Double>,
+    val type: String,
+    val crs: Crs
+)
+
+data class Crs(
+    val type: String,
+    val properties: Properties
+)
+
+data class Properties(
+    val name: String
 )

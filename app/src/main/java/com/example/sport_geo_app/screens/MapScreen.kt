@@ -34,7 +34,7 @@ fun MapScreen() {
         MapViewportState().apply {
             setCameraOptions {
                 zoom(10.0)
-                center(Point.fromLngLat(60.241499034 , 24.857163238))
+                center(Point.fromLngLat(24.857163238, 60.241499034))
                 pitch(0.0)
                 bearing(0.0)
             }
@@ -99,7 +99,7 @@ fun fetchPlacesAndAddMarkers(
         )
 
 
-        val annotationPoint = Point.fromLngLat(place.longitude, place.latitude)
+        val annotationPoint = Point.fromLngLat(place.geom.coordinates[0], place.geom.coordinates[1])
         PointAnnotation(
             iconImageBitmap = bitmap,
             iconSize = 0.5,
