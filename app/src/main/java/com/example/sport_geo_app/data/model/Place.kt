@@ -1,7 +1,7 @@
 package com.example.sport_geo_app.data.model
 import com.google.gson.annotations.SerializedName
 
-data class Place(
+data class SportPlace(
     val id: Int,
     val name: String,
     val type: String,

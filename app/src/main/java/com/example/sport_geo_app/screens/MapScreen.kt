@@ -21,7 +21,7 @@ import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.animation.viewport.MapViewportState
 import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotation
 import androidx.compose.runtime.remember
-import com.example.sport_geo_app.data.model.Place
+import com.example.sport_geo_app.data.model.SportPlace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
@@ -41,7 +41,7 @@ fun MapScreen() {
         }
     }
 
-    val placesState = remember { mutableStateOf<List<Place>>(emptyList()) }
+    val placesState = remember { mutableStateOf<List<SportPlace>>(emptyList()) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         MapboxMap(
@@ -63,7 +63,7 @@ fun MapScreen() {
 @Composable
 fun fetchPlacesAndAddMarkers(
     mapViewportState: MapViewportState,
-    placesState: MutableState<List<Place>>
+    placesState: MutableState<List<SportPlace>>
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -81,7 +81,7 @@ fun fetchPlacesAndAddMarkers(
 
         placesState.value = fetchedPlaces
     }
-
+    println("zoom level: ${mapViewportState.cameraState.zoom}")
     println("Places State Changed: ${placesState}")
 
     val places = placesState.value
