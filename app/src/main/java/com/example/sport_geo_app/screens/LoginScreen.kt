@@ -81,7 +81,7 @@ fun LoginScreen(navController: NavHostController) {
 
             Button(onClick = {
                 try {
-                    navController.navigate(AppNavigation.NavigationItem.Map.route)
+                    navController.navigate(AppNavigation.NavigationItem.Splash.route)
                 } catch (e: Exception) {
                     Log.e("Navigation", "Error navigating to map screen", e)
                 }

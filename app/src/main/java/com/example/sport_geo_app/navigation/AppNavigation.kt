@@ -4,7 +4,7 @@ class AppNavigation {
     enum class Screen {
         SPLASH,
         LOGIN,
-        MAP
+        MAP,
     }
     sealed class NavigationItem(val route: String) {
         object Splash : NavigationItem(Screen.SPLASH.name)

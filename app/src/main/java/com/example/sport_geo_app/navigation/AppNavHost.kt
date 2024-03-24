@@ -6,7 +6,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.sport_geo_app.screens.LoginScreen
-import com.example.sport_geo_app.screens.MapScreen
 import com.example.sport_geo_app.screens.SplashScreen
 
 @Composable
@@ -25,9 +24,6 @@ fun AppNavHost(
         }
         composable(AppNavigation.NavigationItem.Login.route) {
             LoginScreen(navController)
-        }
-        composable(AppNavigation.NavigationItem.Map.route) {
-            MapScreen()
         }
     }
 }
