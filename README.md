@@ -1,5 +1,8 @@
 # Geo-Sport app
-Developed with Jetpack Compose toolkit, Android implementation for https://github.com/Johamatt/sport-geo-api
+Android implementation for https://github.com/Johamatt/sport-geo-api
+
+![Demo GIF](https://github.com/Johamatt/gifs/blob/main/Screen_recording_20240331_011251online-video-cutter.com-ezgif.com-resize%20(1).gif)
+
 # Installation
 
 ## Prequirements
