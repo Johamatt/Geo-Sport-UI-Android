@@ -26,6 +26,8 @@ import com.mapbox.maps.extension.style.sources.generated.geoJsonSource
 import com.mapbox.maps.extension.style.utils.ColorUtils
 import com.mapbox.maps.plugin.LocationPuck2D
 import com.mapbox.maps.plugin.PuckBearing
+import com.mapbox.maps.plugin.animation.MapAnimationOptions
+import com.mapbox.maps.plugin.animation.flyTo
 import com.mapbox.maps.plugin.gestures.OnMoveListener
 import com.mapbox.maps.plugin.gestures.addOnMapClickListener
 import com.mapbox.maps.plugin.gestures.gestures
@@ -141,7 +143,28 @@ class MainActivity : ComponentActivity() {
             RenderedQueryGeometry(screenPoint),
             RenderedQueryOptions(listOf("unclustered-points", "clusters"), null)
         ) { features ->
-            Log.d("queriedfeature", features.value.toString())
+            if (!features.value.isNullOrEmpty()) {
+                val values = features.value?.get(0)?.queriedFeature?.feature
+                val layer = features.value?.get(0)?.layers?.get(0)
+
+                if (layer.toString() == "clusters") {
+                    if (values != null) {
+                        val coordinates = values.geometry();
+                        val currentZoom = mapView.mapboxMap.cameraState.zoom
+                        val newZoom = if (currentZoom >= 12.0) currentZoom + 1 else 12.0
+                        mapView.mapboxMap.flyTo(
+                            CameraOptions.Builder()
+                                .zoom(newZoom)
+                                .pitch(0.0)
+                                .center(coordinates as Point?)
+                                .build(),
+                            MapAnimationOptions.Builder()
+                                .duration(1000)
+                                .build()
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -149,6 +172,7 @@ class MainActivity : ComponentActivity() {
         style.addSource(
             geoJsonSource(GEOJSON_SOURCE_ID) {
                 data("http://10.0.2.2:3000/sportPlaces/map/findAllGeoJson")
+                //    data("http://192.168.67.213:3000/sportPlaces/map/findAllGeoJson") // physical device (server ip)
                 cluster(true)
                 maxzoom(14)
                 clusterRadius(50)
