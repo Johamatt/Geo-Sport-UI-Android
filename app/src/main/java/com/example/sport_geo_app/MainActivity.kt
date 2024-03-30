@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import com.example.sport_geo_app.utils.BitmapUtils.bitmapFromDrawableRes
 import android.graphics.Color
 import android.util.Log
+import android.view.LayoutInflater
+import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.example.sport_geo_app.utils.LocationPermissionHelper
@@ -34,13 +36,16 @@ import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorBearingChangedListener
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener
 import com.mapbox.maps.plugin.locationcomponent.location
+import com.mapbox.maps.viewannotation.viewAnnotationOptions
 import java.lang.ref.WeakReference
-
+import com.mapbox.maps.viewannotation.ViewAnnotationManager;
+import com.mapbox.maps.viewannotation.geometry
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var locationPermissionHelper: LocationPermissionHelper
     private lateinit var mapView: MapView
+    private lateinit var viewAnnotationManager: ViewAnnotationManager
 
     private val onIndicatorBearingChangedListener = OnIndicatorBearingChangedListener {
         mapView.mapboxMap.setCamera(CameraOptions.Builder().bearing(it).build())
@@ -69,6 +74,7 @@ class MainActivity : ComponentActivity() {
         locationPermissionHelper.checkPermissions {
             initializeMap()
         }
+        viewAnnotationManager = mapView.viewAnnotationManager
     }
 
     override fun onDestroy() {
@@ -139,40 +145,57 @@ class MainActivity : ComponentActivity() {
 
     private fun handleMapClick(point: Point) {
         val screenPoint = mapView.mapboxMap.pixelForCoordinate(point)
+        viewAnnotationManager.removeAllViewAnnotations()
         mapView.mapboxMap.queryRenderedFeatures(
             RenderedQueryGeometry(screenPoint),
             RenderedQueryOptions(listOf("unclustered-points", "clusters"), null)
         ) { features ->
-            if (!features.value.isNullOrEmpty()) {
-                val values = features.value?.get(0)?.queriedFeature?.feature
-                val layer = features.value?.get(0)?.layers?.get(0)
-
-                if (layer.toString() == "clusters") {
-                    if (values != null) {
-                        val coordinates = values.geometry();
-                        val currentZoom = mapView.mapboxMap.cameraState.zoom
-                        val newZoom = if (currentZoom >= 12.0) currentZoom + 1 else 12.0
-                        mapView.mapboxMap.flyTo(
-                            CameraOptions.Builder()
-                                .zoom(newZoom)
-                                .pitch(0.0)
-                                .center(coordinates as Point?)
-                                .build(),
-                            MapAnimationOptions.Builder()
-                                .duration(1000)
-                                .build()
-                        )
+            features.value?.firstOrNull()?.let { feature ->
+                val layer = feature.layers?.getOrNull(0)
+                val values = feature.queriedFeature?.feature
+                when (layer) {
+                    "clusters" -> {
+                        if (values != null) {
+                            val coordinates = values.geometry() as? Point
+                            val currentZoom = mapView.mapboxMap.cameraState.zoom
+                            val newZoom = if (currentZoom >= 12.0) currentZoom + 1 else 12.0
+                            mapView.mapboxMap.flyTo(
+                                CameraOptions.Builder()
+                                    .zoom(newZoom)
+                                    .pitch(0.0)
+                                    .center(coordinates)
+                                    .build(),
+                                MapAnimationOptions.Builder()
+                                    .duration(1000)
+                                    .build()
+                            )
+                        }
+                    }
+                    "unclustered-points" -> {
+                        if (values != null) {
+                            val coordinates = values.geometry() as? Point
+                            val name = values.getStringProperty("name") ?: ""
+                            val viewAnnotation = viewAnnotationManager.addViewAnnotation(
+                                resId = R.layout.point_info_layout,
+                                options = viewAnnotationOptions {
+                                    if (coordinates != null) {
+                                        geometry(coordinates)
+                                    }
+                                }
+                            )
+                            viewAnnotation?.findViewById<TextView>(R.id.annotation)?.text = name
+                        }
                     }
                 }
             }
         }
     }
 
+
     private fun addClusteredGeoJsonSource(style: Style) {
         style.addSource(
             geoJsonSource(GEOJSON_SOURCE_ID) {
                 data("http://10.0.2.2:3000/sportPlaces/map/findAllGeoJson")
-                //    data("http://192.168.67.213:3000/sportPlaces/map/findAllGeoJson") // physical device (server ip)
                 cluster(true)
                 maxzoom(14)
                 clusterRadius(50)
