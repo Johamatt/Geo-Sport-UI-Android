@@ -4,13 +4,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import com.example.sport_geo_app.utils.BitmapUtils.bitmapFromDrawableRes
 import android.graphics.Color
+import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.example.sport_geo_app.utils.LocationPermissionHelper
 import com.mapbox.android.gestures.MoveGestureDetector
+import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.ImageHolder
 import com.mapbox.maps.MapView
+import com.mapbox.maps.RenderedQueryGeometry
+import com.mapbox.maps.*
 import com.mapbox.maps.Style
 import com.mapbox.maps.extension.style.expressions.dsl.generated.*
 import com.mapbox.maps.extension.style.expressions.generated.Expression.Companion.step
@@ -23,6 +27,7 @@ import com.mapbox.maps.extension.style.utils.ColorUtils
 import com.mapbox.maps.plugin.LocationPuck2D
 import com.mapbox.maps.plugin.PuckBearing
 import com.mapbox.maps.plugin.gestures.OnMoveListener
+import com.mapbox.maps.plugin.gestures.addOnMapClickListener
 import com.mapbox.maps.plugin.gestures.gestures
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorBearingChangedListener
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener
@@ -33,6 +38,7 @@ import java.lang.ref.WeakReference
 class MainActivity : ComponentActivity() {
 
     private lateinit var locationPermissionHelper: LocationPermissionHelper
+    private lateinit var mapView: MapView
 
     private val onIndicatorBearingChangedListener = OnIndicatorBearingChangedListener {
         mapView.mapboxMap.setCamera(CameraOptions.Builder().bearing(it).build())
@@ -48,14 +54,10 @@ class MainActivity : ComponentActivity() {
             onCameraTrackingDismissed()
         }
 
-        override fun onMove(detector: MoveGestureDetector): Boolean {
-            return false
-        }
+        override fun onMove(detector: MoveGestureDetector): Boolean = false
 
         override fun onMoveEnd(detector: MoveGestureDetector) {}
     }
-
-    private lateinit var mapView: MapView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,32 +65,42 @@ class MainActivity : ComponentActivity() {
         setContentView(mapView)
         locationPermissionHelper = LocationPermissionHelper(WeakReference(this))
         locationPermissionHelper.checkPermissions {
-            onMapReady()
+            initializeMap()
         }
     }
 
-    private fun onMapReady() {
-        mapView.mapboxMap.setCamera(
-            CameraOptions.Builder()
-                .zoom(10.0)
-                .pitch(0.0)
-                .build()
+    override fun onDestroy() {
+        super.onDestroy()
+        mapView.location.removeOnIndicatorBearingChangedListener(onIndicatorBearingChangedListener)
+        mapView.location.removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
+        mapView.gestures.removeOnMoveListener(onMoveListener)
+    }
 
-        )
-        mapView.mapboxMap.loadStyle(
-            Style.STANDARD
-        ) {
-            initLocationComponent()
-            setupGesturesListener()
-            addClusteredGeoJsonSource(it)
-            bitmapFromDrawableRes(this@MainActivity, R.drawable.ic_cross)?.let { bitmap ->
-                it.addImage(CROSS_ICON_ID, bitmap, true)
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        locationPermissionHelper.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
+    private fun initializeMap() {
+        mapView.mapboxMap.apply {
+            setCamera(CameraOptions.Builder().zoom(10.0).pitch(0.0).build())
+            loadStyle(Style.STANDARD) {
+                initLocationComponent()
+                setupGesturesListener()
+                addClusteredGeoJsonSource(it)
+                addOnMapClickListener { point ->
+                    handleMapClick(point)
+                    true
+                }
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.ic_cross)?.let { bitmap ->
+                    it.addImage(CROSS_ICON_ID, bitmap, true)
+                }
             }
         }
-    }
-
-    private fun setupGesturesListener() {
-        mapView.gestures.addOnMoveListener(onMoveListener)
     }
 
     private fun initLocationComponent() {
@@ -103,14 +115,8 @@ class MainActivity : ComponentActivity() {
                 scaleExpression = interpolate {
                     linear()
                     zoom()
-                    stop {
-                        literal(0.0)
-                        literal(0.6)
-                    }
-                    stop {
-                        literal(20.0)
-                        literal(1.0)
-                    }
+                    stop { literal(0.0); literal(0.6) }
+                    stop { literal(20.0); literal(1.0) }
                 }.toJson()
             )
         }
@@ -118,36 +124,28 @@ class MainActivity : ComponentActivity() {
         locationComponentPlugin.addOnIndicatorBearingChangedListener(onIndicatorBearingChangedListener)
     }
 
+    private fun setupGesturesListener() {
+        mapView.gestures.addOnMoveListener(onMoveListener)
+    }
+
     private fun onCameraTrackingDismissed() {
         Toast.makeText(this, "onCameraTrackingDismissed", Toast.LENGTH_SHORT).show()
-        mapView.location
-            .removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
-        mapView.location
-            .removeOnIndicatorBearingChangedListener(onIndicatorBearingChangedListener)
+        mapView.location.removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
+        mapView.location.removeOnIndicatorBearingChangedListener(onIndicatorBearingChangedListener)
         mapView.gestures.removeOnMoveListener(onMoveListener)
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        mapView.location
-            .removeOnIndicatorBearingChangedListener(onIndicatorBearingChangedListener)
-        mapView.location
-            .removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener)
-        mapView.gestures.removeOnMoveListener(onMoveListener)
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        locationPermissionHelper.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    private fun handleMapClick(point: Point) {
+        val screenPoint = mapView.mapboxMap.pixelForCoordinate(point)
+        mapView.mapboxMap.queryRenderedFeatures(
+            RenderedQueryGeometry(screenPoint),
+            RenderedQueryOptions(listOf("unclustered-points", "clusters"), null)
+        ) { features ->
+            Log.d("queriedfeature", features.value.toString())
+        }
     }
 
     private fun addClusteredGeoJsonSource(style: Style) {
-
-        // Add a new source from the GeoJSON data and set the 'cluster' option to true.
         style.addSource(
             geoJsonSource(GEOJSON_SOURCE_ID) {
                 data("http://10.0.2.2:3000/sportPlaces/map/findAllGeoJson")
@@ -157,19 +155,11 @@ class MainActivity : ComponentActivity() {
             }
         )
 
-        // Creating a marker layer for single data points
         style.addLayer(
             symbolLayer("unclustered-points", GEOJSON_SOURCE_ID) {
                 iconImage(CROSS_ICON_ID)
-                iconSize(
-                    literal(1) // Set a fixed icon size or calculate size based on another property if available in your GeoJSON data
-                )
-
-                filter(
-                    has {
-                        literal("name")
-                    }
-                )
+                iconSize(literal(1))
+                filter(has { literal("name") })
             }
         )
 
@@ -179,7 +169,6 @@ class MainActivity : ComponentActivity() {
             intArrayOf(0, ContextCompat.getColor(this, R.color.blue))
         )
 
-        // Add clusters' circles
         style.addLayer(
             circleLayer("clusters", GEOJSON_SOURCE_ID) {
                 circleColor(
@@ -193,25 +182,13 @@ class MainActivity : ComponentActivity() {
                     )
                 )
                 circleRadius(18.0)
-                filter(
-                    has("point_count")
-                )
+                filter(has("point_count"))
             }
         )
 
         style.addLayer(
             symbolLayer("count", GEOJSON_SOURCE_ID) {
-                textField(
-                    format {
-                        formatSection(
-                            toString {
-                                get {
-                                    literal("point_count")
-                                }
-                            }
-                        )
-                    }
-                )
+                textField(format { formatSection(toString { get { literal("point_count") } }) })
                 textSize(12.0)
                 textColor(Color.WHITE)
                 textIgnorePlacement(true)
