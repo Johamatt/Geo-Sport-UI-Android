@@ -31,5 +31,6 @@ data class Crs(
 )
 
 data class Properties(
-    val name: String
+    val name: String,
+    val type: String
 )

@@ -4,8 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import com.example.sport_geo_app.utils.BitmapUtils.bitmapFromDrawableRes
 import android.graphics.Color
-import android.util.Log
-import android.view.LayoutInflater
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -43,9 +41,20 @@ import com.mapbox.maps.viewannotation.geometry
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var locationPermissionHelper: LocationPermissionHelper
     private lateinit var mapView: MapView
+    private lateinit var locationPermissionHelper: LocationPermissionHelper
     private lateinit var viewAnnotationManager: ViewAnnotationManager
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        mapView = MapView(this)
+        setContentView(mapView)
+        locationPermissionHelper = LocationPermissionHelper(WeakReference(this))
+        locationPermissionHelper.checkPermissions {
+            initializeMap()
+        }
+        viewAnnotationManager = mapView.viewAnnotationManager
+    }
 
     private val onIndicatorBearingChangedListener = OnIndicatorBearingChangedListener {
         mapView.mapboxMap.setCamera(CameraOptions.Builder().bearing(it).build())
@@ -66,16 +75,7 @@ class MainActivity : ComponentActivity() {
         override fun onMoveEnd(detector: MoveGestureDetector) {}
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        mapView = MapView(this)
-        setContentView(mapView)
-        locationPermissionHelper = LocationPermissionHelper(WeakReference(this))
-        locationPermissionHelper.checkPermissions {
-            initializeMap()
-        }
-        viewAnnotationManager = mapView.viewAnnotationManager
-    }
+
 
     override fun onDestroy() {
         super.onDestroy()
@@ -104,9 +104,53 @@ class MainActivity : ComponentActivity() {
                     handleMapClick(point)
                     true
                 }
-                bitmapFromDrawableRes(this@MainActivity, R.drawable.ic_cross)?.let { bitmap ->
-                    it.addImage(CROSS_ICON_ID, bitmap, true)
+
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.ice_skating)?.let { bitmap ->
+                    it.addImage(ICE_SKATING_ID, bitmap, true)
                 }
+
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.ic_pin)?.let { bitmap ->
+                    it.addImage(PIN_ID, bitmap, true)
+                }
+
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.football)?.let { bitmap ->
+                    it.addImage(FOOTBALL_ID, bitmap, true)
+                }
+
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.basketball)?.let { bitmap ->
+                    it.addImage(BASKETBALL_ID, bitmap, true)
+                }
+
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.dog_park)?.let { bitmap ->
+                    it.addImage(DOG_PARK_ID, bitmap, true)
+                }
+
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.swim)?.let { bitmap ->
+                    it.addImage(SWIM_ID, bitmap, true)
+                }
+
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.tennis)?.let { bitmap ->
+                    it.addImage(TENNIS_ID, bitmap, true)
+                }
+
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.gym)?.let { bitmap ->
+                    it.addImage(GYM_ID, bitmap, true)
+                }
+
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.volleyball)?.let { bitmap ->
+                    it.addImage(VOLLEYBALL_ID, bitmap, true)
+                }
+
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.golf)?.let { bitmap ->
+                    it.addImage(GOLF_ID, bitmap, true)
+                }
+
+                bitmapFromDrawableRes(this@MainActivity, R.drawable.boat)?.let { bitmap ->
+                    it.addImage(BOAT_ID, bitmap, true)
+                }
+
+
+
             }
         }
     }
@@ -175,6 +219,7 @@ class MainActivity : ComponentActivity() {
                         if (values != null) {
                             val coordinates = values.geometry() as? Point
                             val name = values.getStringProperty("name") ?: ""
+                            val category = values.getStringProperty("type") ?: ""
                             val viewAnnotation = viewAnnotationManager.addViewAnnotation(
                                 resId = R.layout.point_info_layout,
                                 options = viewAnnotationOptions {
@@ -184,6 +229,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                             viewAnnotation?.findViewById<TextView>(R.id.annotation)?.text = name
+                            viewAnnotation?.findViewById<TextView>(R.id.category)?.text = category
                         }
                     }
                 }
@@ -196,6 +242,7 @@ class MainActivity : ComponentActivity() {
         style.addSource(
             geoJsonSource(GEOJSON_SOURCE_ID) {
                 data("http://10.0.2.2:3000/sportPlaces/map/findAllGeoJson")
+
                 cluster(true)
                 maxzoom(14)
                 clusterRadius(50)
@@ -204,11 +251,44 @@ class MainActivity : ComponentActivity() {
 
         style.addLayer(
             symbolLayer("unclustered-points", GEOJSON_SOURCE_ID) {
-                iconImage(CROSS_ICON_ID)
+                iconAllowOverlap(false)
+                iconImage(
+                    match {
+                        get("type")
+                        literal("Pallokenttä")
+                        literal(FOOTBALL_ID)
+                        literal("Jalkapallohalli")
+                        literal(FOOTBALL_ID)
+                        literal("Luistelukenttä")
+                        literal(ICE_SKATING_ID)
+                        literal("Tenniskenttäalue")
+                        literal(TENNIS_ID)
+                        literal("Koripallokenttä")
+                        literal(BASKETBALL_ID)
+                        literal("Kuntosali")
+                        literal(GYM_ID)
+                        literal("Liikuntasali")
+                        literal(GYM_ID)
+                        literal("Koiraurheilualue")
+                        literal(DOG_PARK_ID)
+                        literal("Koiraurheiluhalli")
+                        literal(DOG_PARK_ID)
+                        literal("Uimapaikka")
+                        literal(SWIM_ID)
+                        literal("Veneilyn palvelupaikka")
+                        literal(BOAT_ID)
+                        literal("Lentopallokenttä")
+                        literal(VOLLEYBALL_ID)
+                        literal("Golfkenttä")
+                        literal(GOLF_ID)
+
+                        literal(PIN_ID) // def
+                    }
+                )
                 iconSize(literal(1))
-                filter(has { literal("name") })
             }
         )
+
 
         val layers = arrayOf(
             intArrayOf(150, ContextCompat.getColor(this, R.color.red)),
@@ -246,6 +326,17 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val GEOJSON_SOURCE_ID = "sportplaces"
-        private const val CROSS_ICON_ID = "cross-icon-id"
+        private const val PIN_ID = "pin-icon-id"
+
+        private const val ICE_SKATING_ID = "hockey-icon-id"
+        private const val FOOTBALL_ID = "football-icon-id"
+        private const val BASKETBALL_ID = "basketball-icon-id"
+        private const val SWIM_ID = "swim-icon-id"
+        private const val DOG_PARK_ID = "dog-park-icon-id"
+        private const val TENNIS_ID = "tennis-icon-id"
+        private const val GYM_ID = "gym-icon-id"
+        private const val BOAT_ID = "boat-icon-id"
+        private const val VOLLEYBALL_ID = "volleyball-icon-id"
+        private const val GOLF_ID = "golf-icon-id"
     }
 }

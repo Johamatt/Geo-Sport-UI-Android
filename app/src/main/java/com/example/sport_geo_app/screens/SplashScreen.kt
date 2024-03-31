@@ -22,20 +22,20 @@ fun SplashScreen(navController: NavController) {
         targetValue = 1f,
         animationSpec = tween(durationMillis = 1500)
     ).value
-
-    // Navigating to the next screen after animation completes
     navController.navigate(AppNavigation.NavigationItem.Login.route)
 
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // You can replace this image with your own splash screen image
+        /*
         Image(
             painter = painterResource(id = R.drawable.androidparty),
             contentDescription = "Splash Screen",
             modifier = Modifier.alpha(alphaValue)
         )
+        */
+
     }
 }
 

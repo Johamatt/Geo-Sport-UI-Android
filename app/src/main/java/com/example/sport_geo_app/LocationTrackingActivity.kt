@@ -26,7 +26,7 @@ import java.lang.ref.WeakReference
 /**
  * Tracks the user location on screen, simulates a navigation session.
  */
-class LocationTrackingActivity : ComponentActivity() {
+class LocationTrackingActivity(private val mapView: MapView) : ComponentActivity() {
 
     private lateinit var locationPermissionHelper: LocationPermissionHelper
 
@@ -50,12 +50,11 @@ class LocationTrackingActivity : ComponentActivity() {
 
         override fun onMoveEnd(detector: MoveGestureDetector) {}
     }
-    private lateinit var mapView: MapView
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        mapView = MapView(this)
-        setContentView(mapView)
+        setContentView(mapView) // Set the contentView to the mapView passed from MainActivity
         locationPermissionHelper = LocationPermissionHelper(WeakReference(this))
         locationPermissionHelper.checkPermissions {
             onMapReady()
