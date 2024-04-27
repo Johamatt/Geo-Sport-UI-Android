@@ -2,10 +2,12 @@ package com.example.sport_geo_app
 
 import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
-import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
 import com.example.sport_geo_app.screens.map.LocationListener
 import com.example.sport_geo_app.utils.BitmapUtils
 import com.example.sport_geo_app.utils.LocationPermissionHelper
@@ -35,24 +37,32 @@ import com.mapbox.maps.viewannotation.geometry
 import com.mapbox.maps.viewannotation.viewAnnotationOptions
 import java.lang.ref.WeakReference
 
-class MapActivity : ComponentActivity() {
+class MapFragment : Fragment() {
 
     private lateinit var mapView: MapView
     private lateinit var locationListener: LocationListener
     private lateinit var locationPermissionHelper: LocationPermissionHelper
     private lateinit var viewAnnotationManager: ViewAnnotationManager
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        Log.d("abc", "asd")
-        mapView = MapView(this)
-        setContentView(mapView)
-        locationPermissionHelper = LocationPermissionHelper(WeakReference(this))
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        // Inflate the layout for this fragment
+        val view = inflater.inflate(R.layout.fragment_map, container, false)
+        mapView = view.findViewById(R.id.mapView)
+        return view
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        locationPermissionHelper = LocationPermissionHelper(WeakReference(requireActivity()))
         locationPermissionHelper.checkPermissions {
             initializeMap()
         }
-        viewAnnotationManager = mapView.viewAnnotationManager
     }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
@@ -61,10 +71,14 @@ class MapActivity : ComponentActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         locationPermissionHelper.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
+
     override fun onDestroy() {
         super.onDestroy()
-        locationListener.onDestroy(mapView)
+        if (::locationListener.isInitialized) {
+            locationListener.onDestroy(mapView)
+        }
     }
+
     private fun initializeMap() {
         mapView.mapboxMap.apply {
             setCamera(CameraOptions.Builder().zoom(10.0).pitch(0.0).build())
@@ -72,21 +86,26 @@ class MapActivity : ComponentActivity() {
                 locationListener = LocationListener(mapView)
                 locationListener.setupGesturesListener(mapView)
                 locationListener.initLocationComponent(mapView)
+                viewAnnotationManager = mapView.viewAnnotationManager
                 addClusteredGeoJsonSource(it)
                 addOnMapClickListener { point ->
                     handleMapClick(point)
                     true
                 }
                 for ((drawableRes, id) in resourcesAndIds) {
-                    BitmapUtils.bitmapFromDrawableRes(this@MapActivity, drawableRes)?.let { bitmap ->
-                        it.addImage(id, bitmap, true)
-                    }
+                    BitmapUtils.bitmapFromDrawableRes(requireContext(), drawableRes)
+                        ?.let { bitmap ->
+                            it.addImage(id, bitmap, true)
+                        }
                 }
             }
         }
     }
 
     private fun handleMapClick(point: Point) {
+        if (!::viewAnnotationManager.isInitialized) {
+            return
+        }
         val screenPoint = mapView.mapboxMap.pixelForCoordinate(point)
         viewAnnotationManager.removeAllViewAnnotations()
         mapView.mapboxMap.queryRenderedFeatures(
@@ -114,6 +133,7 @@ class MapActivity : ComponentActivity() {
                             )
                         }
                     }
+
                     "unclustered-points" -> {
                         if (values != null) {
                             val coordinates = values.geometry() as? Point
@@ -135,6 +155,7 @@ class MapActivity : ComponentActivity() {
             }
         }
     }
+
     private fun addClusteredGeoJsonSource(style: Style) {
         style.addSource(
             geoJsonSource(GEOJSON_SOURCE_ID) {
@@ -165,10 +186,11 @@ class MapActivity : ComponentActivity() {
 
 
         val layers = arrayOf(
-            intArrayOf(150, ContextCompat.getColor(this, R.color.red)),
-            intArrayOf(20, ContextCompat.getColor(this, R.color.green)),
-            intArrayOf(0, ContextCompat.getColor(this, R.color.blue))
+            intArrayOf(150, ContextCompat.getColor(requireContext(), R.color.red)),
+            intArrayOf(20, ContextCompat.getColor(requireContext(), R.color.green)),
+            intArrayOf(0, ContextCompat.getColor(requireContext(), R.color.blue))
         )
+
 
         style.addLayer(
             circleLayer("clusters", GEOJSON_SOURCE_ID) {
@@ -177,8 +199,16 @@ class MapActivity : ComponentActivity() {
                         input = get("point_count"),
                         output = literal(ColorUtils.colorToRgbaString(layers[2][1])),
                         stops = arrayOf(
-                            literal(layers[1][0].toDouble()) to literal(ColorUtils.colorToRgbaString(layers[1][1])),
-                            literal(layers[0][0].toDouble()) to literal(ColorUtils.colorToRgbaString(layers[0][1]))
+                            literal(layers[1][0].toDouble()) to literal(
+                                ColorUtils.colorToRgbaString(
+                                    layers[1][1]
+                                )
+                            ),
+                            literal(layers[0][0].toDouble()) to literal(
+                                ColorUtils.colorToRgbaString(
+                                    layers[0][1]
+                                )
+                            )
                         )
                     )
                 )
@@ -189,7 +219,15 @@ class MapActivity : ComponentActivity() {
 
         style.addLayer(
             symbolLayer("count", GEOJSON_SOURCE_ID) {
-                textField(format { formatSection(com.mapbox.maps.extension.style.expressions.dsl.generated.toString { get { literal("point_count") } }) })
+                textField(format {
+                    formatSection(com.mapbox.maps.extension.style.expressions.dsl.generated.toString {
+                        get {
+                            literal(
+                                "point_count"
+                            )
+                        }
+                    })
+                })
                 textSize(12.0)
                 textColor(Color.WHITE)
                 textIgnorePlacement(true)

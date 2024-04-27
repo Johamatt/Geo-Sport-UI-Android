@@ -60,6 +60,7 @@ android {
 
 dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.1")
+    implementation ("androidx.appcompat:appcompat:1.3.0")
 
     implementation("com.mapbox.maps:android:11.2.0")
     // If you're using compose also add the compose extension
@@ -77,6 +78,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.appcompat.resources)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.material)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
