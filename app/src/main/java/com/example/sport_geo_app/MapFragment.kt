@@ -8,7 +8,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.example.sport_geo_app.screens.map.LocationListener
+import com.example.sport_geo_app.utils.LocationListener
 import com.example.sport_geo_app.utils.BitmapUtils
 import com.example.sport_geo_app.utils.LocationPermissionHelper
 import com.mapbox.geojson.Point
@@ -113,8 +113,8 @@ class MapFragment : Fragment() {
             RenderedQueryOptions(listOf("unclustered-points", "clusters"), null)
         ) { features ->
             features.value?.firstOrNull()?.let { feature ->
-                val layer = feature.layers?.getOrNull(0)
-                val values = feature.queriedFeature?.feature
+                val layer = feature.layers.getOrNull(0)
+                val values = feature.queriedFeature.feature
                 when (layer) {
                     "clusters" -> {
                         if (values != null) {
@@ -147,8 +147,8 @@ class MapFragment : Fragment() {
                                     }
                                 }
                             )
-                            viewAnnotation?.findViewById<TextView>(R.id.annotation)?.text = name
-                            viewAnnotation?.findViewById<TextView>(R.id.category)?.text = category
+                            viewAnnotation.findViewById<TextView>(R.id.annotation)?.text = name
+                            viewAnnotation.findViewById<TextView>(R.id.category)?.text = category
                         }
                     }
                 }
@@ -265,7 +265,7 @@ class MapFragment : Fragment() {
         Pair(R.drawable.boat, BOAT_ID)
     )
 
-    val typeToIconMap = mapOf(
+    private val typeToIconMap = mapOf(
         "Pallokenttä" to FOOTBALL_ID,
         "Jalkapallohalli" to FOOTBALL_ID,
         "Luistelukenttä" to ICE_SKATING_ID,

@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.storage.CacheResetOnProcessCanceled.enabled
-
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
@@ -59,12 +57,8 @@ android {
 }
 
 dependencies {
-    implementation("androidx.navigation:navigation-compose:2.7.1")
-    implementation ("androidx.appcompat:appcompat:1.3.0")
 
     implementation("com.mapbox.maps:android:11.2.0")
-    // If you're using compose also add the compose extension
-    implementation("com.mapbox.extension:maps-compose:11.2.0")
     implementation ("com.squareup.retrofit2:retrofit:2.9.0")
     implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
 

@@ -1,6 +1,5 @@
-package com.example.sport_geo_app.screens.map
+package com.example.sport_geo_app.utils
 
-import android.widget.Toast
 import com.example.sport_geo_app.R
 import com.mapbox.android.gestures.MoveGestureDetector
 import com.mapbox.maps.CameraOptions
