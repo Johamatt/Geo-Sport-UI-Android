@@ -16,7 +16,8 @@ data class SportPlace(
     @SerializedName("mainType")
     val mainType: String,
     val district: String,
-    val geom: Geom
+    val geom: Geom,
+    val distance: Int?
 )
 
 data class Geom(

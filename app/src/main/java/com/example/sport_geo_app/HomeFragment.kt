@@ -43,16 +43,18 @@ class HomeFragment : Fragment() {
     private fun fetchNearbyPlaces() {
         val apiService = ApiClient.getApiService()
 
-        // TODO: Replace latitude and longitude with actual values
+        // TODO: Replace latitude and longitude with actual values + scroll pagination
         val latitude = 60.250522
         val longitude = 24.841421
         val radius = 1000 // Radius in meters
+        val page = 1
+        val limit = 10
 
         GlobalScope.launch(Dispatchers.IO) {
             try {
-                val nearbyPlaces = apiService.getNearbyPlaces(latitude, longitude, radius)
+                val nearbyPlaces = apiService.getNearbyPlaces(latitude, longitude, radius, page, limit)
                 withContext(Dispatchers.Main) {
-                    // Update UI with fetched data using custom adapter
+
                     val adapter = SportPlaceAdapter(requireContext(), nearbyPlaces)
                     listView.adapter = adapter
                 }
@@ -73,14 +75,13 @@ class SportPlaceAdapter(context: Context, places: List<SportPlace>) : ArrayAdapt
 
         val place = getItem(position)
 
-        // Set data to views
         val logoImage: ImageView = itemView!!.findViewById(R.id.icon)
         val nameTextView: TextView = itemView.findViewById(R.id.name)
         val distanceTextView: TextView = itemView.findViewById(R.id.distance)
 
         place?.let {
             nameTextView.text = it.name
-            distanceTextView.text = "500m" // Sample distance
+            distanceTextView.text = it.distance.toString() + " m"
             val iconResource = getIconResource(it.type)
             logoImage.setImageResource(iconResource)
 

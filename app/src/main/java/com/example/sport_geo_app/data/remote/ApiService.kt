@@ -7,6 +7,8 @@ interface ApiService {
     suspend fun getNearbyPlaces(
         @Query("latitude") latitude: Double,
         @Query("longitude") longitude: Double,
-        @Query("radius") radius: Int
+        @Query("radius") radius: Int,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int
     ): List<SportPlace>
 }
