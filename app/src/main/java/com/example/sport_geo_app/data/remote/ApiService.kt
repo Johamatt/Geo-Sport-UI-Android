@@ -11,4 +11,12 @@ interface ApiService {
         @Query("page") page: Int,
         @Query("limit") limit: Int
     ): List<SportPlace>
+
+
+    @GET("/sportPlaces")
+    suspend fun getPlacesByCity(
+        @Query("city") city: String,
+        @Query("page") page: Int,
+        @Query("limit") limit: Int
+    ): List<SportPlace>
 }

@@ -1,7 +1,11 @@
 package com.example.sport_geo_app
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,9 +13,12 @@ import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.ListView
 import android.widget.TextView
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import com.example.sport_geo_app.data.model.SportPlace
 import com.example.sport_geo_app.data.remote.ApiClient
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -22,6 +29,7 @@ class HomeFragment : Fragment() {
 
     private lateinit var listView: ListView
     private lateinit var adapter: ArrayAdapter<SportPlace>
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -30,38 +38,69 @@ class HomeFragment : Fragment() {
     ): View? {
         val rootView = inflater.inflate(R.layout.fragment_home, container, false)
         listView = rootView.findViewById(R.id.listNearby)
-
-        // Initialize adapter
         adapter = ArrayAdapter(requireContext(), R.layout.list_item_nearby)
         listView.adapter = adapter
 
-        // Fetch nearby places
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
         fetchNearbyPlaces()
+
         return rootView
     }
 
     private fun fetchNearbyPlaces() {
-        val apiService = ApiClient.getApiService()
+        if (ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                requireActivity(),
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+            return
+        }
 
-        // TODO: Replace latitude and longitude with actual values + scroll pagination
-        val latitude = 60.250522
-        val longitude = 24.841421
-        val radius = 1000 // Radius in meters
-        val page = 1
-        val limit = 10
+        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+            if (location != null) {
+                val latitude = location.latitude
+                val longitude = location.longitude
+                val radius = 100000
+                // Todo pagination
+                val page = 1
+                val limit = 10
 
-        GlobalScope.launch(Dispatchers.IO) {
-            try {
-                val nearbyPlaces = apiService.getNearbyPlaces(latitude, longitude, radius, page, limit)
-                withContext(Dispatchers.Main) {
+                GlobalScope.launch(Dispatchers.IO) {
+                    try {
 
-                    val adapter = SportPlaceAdapter(requireContext(), nearbyPlaces)
-                    listView.adapter = adapter
+
+                        val apiService = ApiClient.getApiService()
+                        var places = apiService.getNearbyPlaces(latitude, longitude, radius, page, limit)
+
+
+                        // Todo city dropdown
+                        if (places.isEmpty()) {
+                            places = apiService.getPlacesByCity( "Helsinki", page, limit)
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            val adapter = SportPlaceAdapter(requireContext(), places)
+                            listView.adapter = adapter
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Log.d("Homefragment", "Error fetching nearby places")
+                    }
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }
+    }
+
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
     }
 }
 
@@ -81,29 +120,32 @@ class SportPlaceAdapter(context: Context, places: List<SportPlace>) : ArrayAdapt
 
         place?.let {
             nameTextView.text = it.name
-            distanceTextView.text = it.distance.toString() + " m"
+            if (it.distance != null) {
+                distanceTextView.text = "${it.distance} m"
+            } else {
+                distanceTextView.text = ""
+            }
             val iconResource = getIconResource(it.type)
             logoImage.setImageResource(iconResource)
-
         }
 
         return itemView
     }
-}
 
-private fun getIconResource(type: String): Int {
-    return when (type.lowercase(Locale.ROOT)) {
-        "pallokenttä", "jalkapallohalli" -> R.drawable.football
-        "jääkiekko", "luistelukenttä" -> R.drawable.ice_skating
-        "tenniskenttäalue" -> R.drawable.tennis
-        "koripallokenttä" -> R.drawable.basketball
-        "kuntosali", "liikuntasali" -> R.drawable.gym
-        "koiraurheilualue", "koiraurheiluhalli" -> R.drawable.dog_park
-        "uimapaikka" -> R.drawable.swim
-        "veneilyn palvelupaikka" -> R.drawable.boat
-        "lentopallokenttä" -> R.drawable.volleyball
-        "golfkenttä" -> R.drawable.golf
+    private fun getIconResource(type: String): Int {
+        return when (type.lowercase(Locale.ROOT)) {
+            "pallokenttä", "jalkapallohalli" -> R.drawable.football
+            "jääkiekko", "luistelukenttä" -> R.drawable.ice_skating
+            "tenniskenttäalue" -> R.drawable.tennis
+            "koripallokenttä" -> R.drawable.basketball
+            "kuntosali", "liikuntasali" -> R.drawable.gym
+            "koiraurheilualue", "koiraurheiluhalli" -> R.drawable.dog_park
+            "uimapaikka" -> R.drawable.swim
+            "veneilyn palvelupaikka" -> R.drawable.boat
+            "lentopallokenttä" -> R.drawable.volleyball
+            "golfkenttä" -> R.drawable.golf
 
-        else -> R.drawable.baseline_question_24
+            else -> R.drawable.baseline_question_24
+        }
     }
 }
