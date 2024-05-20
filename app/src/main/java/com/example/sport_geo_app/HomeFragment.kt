@@ -24,12 +24,15 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import android.widget.AbsListView
 
 class HomeFragment : Fragment() {
 
     private lateinit var listView: ListView
-    private lateinit var adapter: ArrayAdapter<SportPlace>
+    private lateinit var adapter: SportPlaceAdapter
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var currentPage = 1
+    private val limit = 15
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -38,12 +41,20 @@ class HomeFragment : Fragment() {
     ): View? {
         val rootView = inflater.inflate(R.layout.fragment_home, container, false)
         listView = rootView.findViewById(R.id.listNearby)
-        adapter = ArrayAdapter(requireContext(), R.layout.list_item_nearby)
+        adapter = SportPlaceAdapter(requireContext(), mutableListOf())
         listView.adapter = adapter
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
         fetchNearbyPlaces()
 
+        listView.setOnScrollListener(object : AbsListView.OnScrollListener {
+            override fun onScrollStateChanged(view: AbsListView?, scrollState: Int) {}
+            override fun onScroll(view: AbsListView?, firstVisibleItem: Int, visibleItemCount: Int, totalItemCount: Int) {
+                if (firstVisibleItem + visibleItemCount == totalItemCount && totalItemCount != 0) {
+                    fetchNearbyPlaces()
+                }
+            }
+        })
         return rootView
     }
 
@@ -69,33 +80,28 @@ class HomeFragment : Fragment() {
                 val latitude = location.latitude
                 val longitude = location.longitude
                 val radius = 100000
-                // Todo pagination
-                val page = 1
-                val limit = 10
-
                 GlobalScope.launch(Dispatchers.IO) {
                     try {
-
-
                         val apiService = ApiClient.getApiService()
-                        var places = apiService.getNearbyPlaces(latitude, longitude, radius, page, limit)
-
-
-                        // Todo city dropdown
-                        if (places.isEmpty()) {
-                            places = apiService.getPlacesByCity( "Helsinki", page, limit)
-                        }
+                        val places = apiService.getNearbyPlaces(latitude, longitude, radius, currentPage, limit)
 
                         withContext(Dispatchers.Main) {
-                            val adapter = SportPlaceAdapter(requireContext(), places)
-                            listView.adapter = adapter
+                            adapter.addAll(places)
+                            adapter.notifyDataSetChanged()
+                            currentPage++
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
                         Log.d("Homefragment", "Error fetching nearby places")
                     }
                 }
+            } else {
+                // Handle the case where location is null
+                Log.d("Homefragment", "Last known location is null")
             }
+        }.addOnFailureListener { exception ->
+            // Handle the failure case
+            Log.e("Homefragment", "Error getting last known location", exception)
         }
     }
 
@@ -104,7 +110,7 @@ class HomeFragment : Fragment() {
     }
 }
 
-class SportPlaceAdapter(context: Context, places: List<SportPlace>) : ArrayAdapter<SportPlace>(context, 0, places) {
+class SportPlaceAdapter(context: Context, places: MutableList<SportPlace>) : ArrayAdapter<SportPlace>(context, 0, places) {
 
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         var itemView = convertView
