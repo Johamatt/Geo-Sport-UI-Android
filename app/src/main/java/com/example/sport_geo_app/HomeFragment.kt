@@ -2,7 +2,6 @@ package com.example.sport_geo_app
 
 import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.util.Log
@@ -13,7 +12,6 @@ import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.ListView
 import android.widget.TextView
-import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import com.example.sport_geo_app.data.model.SportPlace
 import com.example.sport_geo_app.data.remote.ApiClient
@@ -25,9 +23,10 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 import android.widget.AbsListView
 import androidx.lifecycle.lifecycleScope
+import com.example.sport_geo_app.utils.LocationPermissionHelper
+import java.lang.ref.WeakReference
 
 class HomeFragment : Fragment() {
-
     private lateinit var listView: ListView
     private lateinit var adapter: SportPlaceAdapter
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -35,6 +34,7 @@ class HomeFragment : Fragment() {
     private var currentPage = 1
     private val limit = 20
     private var isFetching = false
+    private lateinit var locationPermissionHelper: LocationPermissionHelper
 
     private val errorMessages = mapOf(
         Manifest.permission.ACCESS_FINE_LOCATION to "Location permission is required to show nearby sports places. Please enable location permission in your settings.",
@@ -46,6 +46,8 @@ class HomeFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        super.onCreate(savedInstanceState)
+        locationPermissionHelper = LocationPermissionHelper(WeakReference(requireActivity()))
         val rootView = inflater.inflate(R.layout.fragment_home, container, false)
         initializeViews(rootView)
         setupListView()
@@ -73,29 +75,13 @@ class HomeFragment : Fragment() {
     }
 
     private fun checkLocationPermissionAndFetchPlaces() {
-        if (isLocationPermissionGranted()) {
+        locationPermissionHelper.checkPermissions {
             fetchNearbyPlaces()
-        } else {
-            requestLocationPermissions()
         }
     }
 
-    private fun isLocationPermissionGranted(): Boolean {
-        return ActivityCompat.checkSelfPermission(
-            requireContext(),
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(
-            requireContext(),
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun requestLocationPermissions() {
-        ActivityCompat.requestPermissions(
-            requireActivity(),
-            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
-            LOCATION_PERMISSION_REQUEST_CODE
-        )
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        locationPermissionHelper.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     private fun fetchNearbyPlaces() {
@@ -167,10 +153,6 @@ class HomeFragment : Fragment() {
     private fun showListView() {
         errorText.visibility = View.GONE
         listView.visibility = View.VISIBLE
-    }
-
-    companion object {
-        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
     }
 }
 
