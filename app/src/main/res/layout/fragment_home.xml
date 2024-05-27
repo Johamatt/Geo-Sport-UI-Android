@@ -2,9 +2,29 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <TextView
+        android:id="@+id/errorText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:text="Location permission is required to show nearby sports places. Please enable location permission in your settings."
+        android:visibility="gone"
+        android:textAlignment="center"
+        android:padding="16dp"
+        android:textSize="16sp" />
+
+    <Button
+        android:id="@+id/optionsButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:text="Options" />
 
     <ListView
+        android:id="@+id/listNearby"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/listNearby"/>
+        android:layout_below="@+id/optionsButton" />
+
 </RelativeLayout>

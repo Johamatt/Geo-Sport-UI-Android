@@ -20,95 +20,161 @@ import com.example.sport_geo_app.data.remote.ApiClient
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import android.widget.AbsListView
+import androidx.lifecycle.lifecycleScope
 
 class HomeFragment : Fragment() {
 
     private lateinit var listView: ListView
     private lateinit var adapter: SportPlaceAdapter
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var errorText: TextView
     private var currentPage = 1
-    private val limit = 15
+    private val limit = 20
+    private var isFetching = false
+
+    private val errorMessages = mapOf(
+        Manifest.permission.ACCESS_FINE_LOCATION to "Location permission is required to show nearby sports places. Please enable location permission in your settings.",
+        Manifest.permission.ACCESS_COARSE_LOCATION to "Location permission is required to show nearby sports places. Please enable location permission in your settings.",
+        SecurityException::class to "Location permission is required to show nearby sports places. Please enable location permission in your settings."
+    )
 
     override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
+        inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         val rootView = inflater.inflate(R.layout.fragment_home, container, false)
+        initializeViews(rootView)
+        setupListView()
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
+        checkLocationPermissionAndFetchPlaces()
+        return rootView
+    }
+
+    private fun initializeViews(rootView: View) {
         listView = rootView.findViewById(R.id.listNearby)
+        errorText = rootView.findViewById(R.id.errorText)
         adapter = SportPlaceAdapter(requireContext(), mutableListOf())
         listView.adapter = adapter
+    }
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
-        fetchNearbyPlaces()
-
+    private fun setupListView() {
         listView.setOnScrollListener(object : AbsListView.OnScrollListener {
             override fun onScrollStateChanged(view: AbsListView?, scrollState: Int) {}
             override fun onScroll(view: AbsListView?, firstVisibleItem: Int, visibleItemCount: Int, totalItemCount: Int) {
-                if (firstVisibleItem + visibleItemCount == totalItemCount && totalItemCount != 0) {
+                if (!isFetching && firstVisibleItem + visibleItemCount == totalItemCount && totalItemCount != 0) {
                     fetchNearbyPlaces()
                 }
             }
         })
-        return rootView
+    }
+
+    private fun checkLocationPermissionAndFetchPlaces() {
+        if (isLocationPermissionGranted()) {
+            fetchNearbyPlaces()
+        } else {
+            requestLocationPermissions()
+        }
+    }
+
+    private fun isLocationPermissionGranted(): Boolean {
+        return ActivityCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestLocationPermissions() {
+        ActivityCompat.requestPermissions(
+            requireActivity(),
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+            LOCATION_PERMISSION_REQUEST_CODE
+        )
     }
 
     private fun fetchNearbyPlaces() {
-        if (ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                requireActivity(),
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
-            return
-        }
 
-        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-            if (location != null) {
-                val latitude = location.latitude
-                val longitude = location.longitude
-                val radius = 100000
-                GlobalScope.launch(Dispatchers.IO) {
-                    try {
-                        val apiService = ApiClient.getApiService()
-                        val places = apiService.getNearbyPlaces(latitude, longitude, radius, currentPage, limit)
-
-                        withContext(Dispatchers.Main) {
-                            adapter.addAll(places)
-                            adapter.notifyDataSetChanged()
-                            currentPage++
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        Log.d("Homefragment", "Error fetching nearby places")
+        if (!isFetching) {
+            isFetching = true
+            try {
+                fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+                    location?.let {
+                        loadNearbyPlaces(it.latitude, it.longitude)
+                        isFetching = false
+                    } ?: run {
+                        showErrorText("Last known location is null")
+                        Log.d("HomeFragment", "Last known location is null")
+                        isFetching = false
                     }
+                }.addOnFailureListener { exception ->
+                    showErrorText(exception)
+                    Log.e("HomeFragment", "Error getting last known location", exception)
+                    isFetching = false
                 }
-            } else {
-                // Handle the case where location is null
-                Log.d("Homefragment", "Last known location is null")
+            } catch (e: SecurityException) {
+                showErrorText(e)
+                Log.e("HomeFragment", "Location permissions are not granted", e)
+                isFetching = false
             }
-        }.addOnFailureListener { exception ->
-            // Handle the failure case
-            Log.e("Homefragment", "Error getting last known location", exception)
+            isFetching = false
         }
+    }
+
+    private fun loadNearbyPlaces(latitude: Double, longitude: Double) {
+        val radius = 50000
+        val lat = 60.192059
+        val lon = 24.945831
+        // TODO replace with lat long
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val apiService = ApiClient.getApiService()
+                val places = apiService.getNearbyPlaces(
+                    lat,
+                    lon,
+                    radius,
+                    currentPage,
+                    limit
+                )
+
+
+                withContext(Dispatchers.Main) {
+                    adapter.addAll(places)
+                    adapter.notifyDataSetChanged()
+                    showListView()
+                    currentPage++
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                showErrorText(e)
+            }
+        }
+    }
+
+    private fun showErrorText(errorType: Any) {
+        val errorMessage = errorMessages[errorType::class]
+        errorText.text = errorMessage ?: "An unknown error occurred."
+        errorText.visibility = View.VISIBLE
+        listView.visibility = View.GONE
+        isFetching = false
+    }
+
+    private fun showListView() {
+        errorText.visibility = View.GONE
+        listView.visibility = View.VISIBLE
     }
 
     companion object {
         private const val LOCATION_PERMISSION_REQUEST_CODE = 1
     }
 }
+
+
 
 class SportPlaceAdapter(context: Context, places: MutableList<SportPlace>) : ArrayAdapter<SportPlace>(context, 0, places) {
 
